@@ -1,0 +1,4 @@
+dashscope==1.23.9
+gradio==5.38.0
+modelscope_studio==1.4.3
+openai==1.97.0
