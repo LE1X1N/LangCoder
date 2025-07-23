@@ -10,7 +10,10 @@ from openai import OpenAI
 import modelscope_studio.components.base as ms
 import modelscope_studio.components.legacy as legacy
 import modelscope_studio.components.antd as antd
-from config import DEMO_LIST, SystemPrompt
+import modelscope_studio.components.pro as pro
+
+
+from config import DEMO_LIST, SYSTEM_PROMPT
 
 # open-ai client
 # you can launch a local openai server with vLLM
@@ -19,6 +22,26 @@ client = OpenAI(
     api_key="token-xxxxx" 
 )
 MODEL = "Qwen2.5-Coder-7B-Instruct"
+
+
+react_imports = {
+    "lucide-react": "https://esm.sh/lucide-react@0.525.0",
+    "recharts": "https://esm.sh/recharts@3.1.0",
+    "framer-motion": "https://esm.sh/framer-motion@12.23.6",
+    "matter-js": "https://esm.sh/matter-js@0.20.0",
+    "p5": "https://esm.sh/p5@2.0.3",
+    "konva": "https://esm.sh/konva@9.3.22",
+    "react-konva": "https://esm.sh/react-konva@19.0.7",
+    "three": "https://esm.sh/three@0.178.0",
+    "@react-three/fiber": "https://esm.sh/@react-three/fiber@9.2.0",
+    "@react-three/drei": "https://esm.sh/@react-three/drei@10.5.2",
+    "@tailwindcss/browser": "https://esm.sh/@tailwindcss/browser@4.1.11",
+    "react": "https://esm.sh/react@19.1.0",
+    "react/": "https://esm.sh/react@19.1.0/",
+    "react-dom": "https://esm.sh/react-dom@19.1.0",
+    "react-dom/": "https://esm.sh/react-dom@19.1.0/",
+    "react-router-dom": "https://esm.sh/react-router-dom@7.7.0"
+}
 
 History = List[Tuple[str, str]]
 Messages = List[Dict[str, str]]
@@ -48,13 +71,60 @@ def remove_code_block(text):
 def history_render(history: History):
     return gr.update(open=True), history
 
+
+def get_generated_files(text):
+    patterns = {
+        'html': r'```html\n(.+?)\n```',
+        'jsx': r'```jsx\n(.+?)\n```',
+        'tsx': r'```tsx\n(.+?)\n```',
+    }
+    result = {}
+
+    for ext, pattern in patterns.items():
+        matches = re.findall(pattern, text, re.DOTALL)
+        if matches:
+            content = '\n'.join(matches).strip()
+            result[f'index.{ext}'] = content
+
+    if len(result) == 0:
+        result["index.html"] = text.strip()
+    return result
+
+
 def clear_history():
     return []
 
 def send_to_sandbox(code):
     encoded_html = base64.b64encode(code.encode("utf-8")).decode("utf-8")
     data_uri = f"data:text/html;charset=utf-8;base64,{encoded_html}"
-    return f'<iframe src="{data_uri}" width="100%" height="920px"></iframe>'
+    # return f'<iframe src="{data_uri}" width="100%" height="920px"></iframe>'
+
+    # return {
+    #     '/src/App.jsx': {
+    #         'code': code,
+    #         'fpath': '/src/App.jsx',
+    #     },
+    #     # 以路径为 key，必须以绝对路径来描述
+    #     '/src/index.js': {
+    #         'code':
+    #         'import React from "react"; import ReactDOM from "react-dom"; import App from "./App"; const rootElement = document.getElementById("root"); ReactDOM.render(<App />, rootElement);',
+    #         'fpath': '/src/index.js',
+    #     },
+    #     '/package.json': {
+    #         'code': '{"name":"demo", "main": "./src/index.js", "dependencies":{ "react": "18.3.1", "react-dom": "18.3.1", "antd": "5.21.6", "styled-components": "6.1.13" }}',
+    #         'fpath': '/package.json',
+    #     },
+    # }
+    
+    return {
+            "./index.tsx": """import Demo from './demo.tsx'
+                                export default Demo
+                            """,
+            "./demo.tsx": code
+    }
+
+
+
 
 def demo_card_click(e: gr.EventData):
     index = e._data["component"]["index"]
@@ -65,7 +135,7 @@ with gr.Blocks(css_paths="app.css") as demo:
     history = gr.State([])
     setting = gr.State(
         {
-            "system": SystemPrompt,
+            "system": SYSTEM_PROMPT,
         }
     )
 
@@ -77,11 +147,18 @@ with gr.Blocks(css_paths="app.css") as demo:
                 with antd.Col(span=24, md=8):
                     with antd.Flex(vertical=True, gap="middle", wrap=True):
                         # header 
+                        # header = gr.HTML(
+                        #     """
+                        #         <div class="left_header">
+                        #             <img src="//img.alicdn.com/imgextra/i2/O1CN01KDhOma1DUo8oa7OIU_!!6000000000220-1-tps-240-240.gif" width="200px" />
+                        #             <h1>HTML界面设计</h2>
+                        #         </div>
+                        #     """
+                        # )
                         header = gr.HTML(
                             """
                                 <div class="left_header">
-                                    <img src="//img.alicdn.com/imgextra/i2/O1CN01KDhOma1DUo8oa7OIU_!!6000000000220-1-tps-240-240.gif" width="200px" />
-                                    <h1>Qwen2.5-Coder</h2>
+                                    <h1>网站界面设计</h2>
                                 </div>
                             """
                         )
@@ -92,13 +169,13 @@ with gr.Blocks(css_paths="app.css") as demo:
                             allow_clear=True,
                             placeholder="Please enter what kind of application you want",
                         )
-                        btn = antd.Button("send", type="primary", size="large")
+                        btn = antd.Button("发送", type="primary", size="large")
                         clear_btn = antd.Button(
-                            "clear history", type="default", size="large"
+                            "清除对话记录", type="default", size="large"
                         )
 
                         # examples
-                        antd.Divider("examples")
+                        antd.Divider("应用案例")
                         with antd.Flex(gap="small", wrap=True):
                             with ms.Each(DEMO_LIST):
                                 with antd.Card(
@@ -108,18 +185,18 @@ with gr.Blocks(css_paths="app.css") as demo:
                                 demoCard.click(demo_card_click, outputs=[input])
 
                         # settings
-                        antd.Divider("setting")
+                        antd.Divider("设置")
                         with antd.Flex(gap="small", wrap=True):
-                            settingPromptBtn = antd.Button("⚙️ set system Prompt", type="default")
-                            codeBtn = antd.Button("🧑‍💻 view code", type="default")
-                            historyBtn = antd.Button("📜 history", type="default")
+                            settingPromptBtn = antd.Button("⚙️ 设置系统提示词", type="default")
+                            codeBtn = antd.Button("🧑‍💻 浏览代码", type="default")
+                            historyBtn = antd.Button("📜 对话历史", type="default")
 
                     # set system Prompt buttons
                     with antd.Modal(
                         open=False, title="set system Prompt", width="800px"
                     ) as system_prompt_modal:
                         systemPromptInput = antd.InputTextarea(
-                            SystemPrompt, auto_size=True
+                            SYSTEM_PROMPT, auto_size=True
                         )
 
                     settingPromptBtn.click(
@@ -187,7 +264,14 @@ with gr.Blocks(css_paths="app.css") as demo:
                                 loading = antd.Spin(True, tip="coding...", size="large", elem_classes="right_content")
                             # 3. render
                             with antd.Tabs.Item(key="render"):
-                                sandbox = gr.HTML(elem_classes="html_content")
+                                # for simple html
+                                # sandbox = gr.HTML(elem_classes="html_content")
+                                # for react
+                                sandbox = pro.WebSandbox(
+                                    height="600",
+                                    elem_classes="output-html",
+                                    template="html",
+                                )
 
 
             def generation_code(query: Optional[str], _setting: Dict[str, str], _history: Optional[History],):
@@ -218,12 +302,28 @@ with gr.Blocks(css_paths="app.css") as demo:
                         _history = messages_to_history(
                             messages + [{"role": "assistant", "content": full_content}]
                         )
-                        print("history")
-                        print(_history)
+                        # print("history")
+                        # print(_history)
+                        
+                        generated_files = get_generated_files(full_content)
+                        react_code = generated_files.get("index.tsx") or generated_files.get("index.jsx")
+                        html_code = generated_files.get("index.html")
+                        
                         yield {
                             code_output: full_content,
                             history: _history,
-                            sandbox: send_to_sandbox(remove_code_block(full_content)),
+                            # sandbox: send_to_sandbox(remove_code_block(full_content)),                  
+                            sandbox: gr.update(template="react" if react_code else "html",
+                                                imports=react_imports if react_code else {},
+                                                height=900,
+                                                value={
+                                                    "./index.tsx": """import Demo from './demo.tsx'
+                                                                    import "@tailwindcss/browser"
+                                                                    export default Demo
+                                                                    """,
+                                                    "./demo.tsx": react_code
+                                                    } if react_code else {"./index.html": html_code},
+                                                ),
                             state_tab: gr.update(active_key="render"),
                             code_drawer: gr.update(open=False),
                         }

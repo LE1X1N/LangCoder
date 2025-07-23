@@ -1,2 +1,5 @@
 .gradio
+.vscode
 __pycache__
+
+test/
