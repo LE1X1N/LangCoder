@@ -40,7 +40,11 @@ react_imports = {
     "react/": "https://esm.sh/react@19.1.0/",
     "react-dom": "https://esm.sh/react-dom@19.1.0",
     "react-dom/": "https://esm.sh/react-dom@19.1.0/",
-    "react-router-dom": "https://esm.sh/react-router-dom@7.7.0"
+    
+    # new
+    "antd": "https://esm.sh/antd@5.21.6",
+    "react-router-dom": "https://esm.sh/react-router-dom@7.7.0",
+    "@ant-design/icons": "https://esm.sh/@ant-design/icons@6.1.0"
 }
 
 History = List[Tuple[str, str]]
@@ -94,49 +98,15 @@ def get_generated_files(text):
 def clear_history():
     return []
 
-def send_to_sandbox(code):
-    encoded_html = base64.b64encode(code.encode("utf-8")).decode("utf-8")
-    data_uri = f"data:text/html;charset=utf-8;base64,{encoded_html}"
-    # return f'<iframe src="{data_uri}" width="100%" height="920px"></iframe>'
 
-    # return {
-    #     '/src/App.jsx': {
-    #         'code': code,
-    #         'fpath': '/src/App.jsx',
-    #     },
-    #     # 以路径为 key，必须以绝对路径来描述
-    #     '/src/index.js': {
-    #         'code':
-    #         'import React from "react"; import ReactDOM from "react-dom"; import App from "./App"; const rootElement = document.getElementById("root"); ReactDOM.render(<App />, rootElement);',
-    #         'fpath': '/src/index.js',
-    #     },
-    #     '/package.json': {
-    #         'code': '{"name":"demo", "main": "./src/index.js", "dependencies":{ "react": "18.3.1", "react-dom": "18.3.1", "antd": "5.21.6", "styled-components": "6.1.13" }}',
-    #         'fpath': '/package.json',
-    #     },
-    # }
-    
-    return {
-            "./index.tsx": """import Demo from './demo.tsx'
-                                export default Demo
-                            """,
-            "./demo.tsx": code
-    }
-
-
-
-
-def demo_card_click(e: gr.EventData):
+def demo_card_click(e: gr.EventData, ):
     index = e._data["component"]["index"]
-    return DEMO_LIST[index]["description"]
-
+    return DEMO_LIST[index]["prompt"]
 
 with gr.Blocks(css_paths="app.css") as demo:
-    history = gr.State([])
+    history = gr.State([])      # chat history
     setting = gr.State(
-        {
-            "system": SYSTEM_PROMPT,
-        }
+        {"system": SYSTEM_PROMPT,}
     )
 
     with ms.Application() as app:
@@ -168,22 +138,20 @@ with gr.Blocks(css_paths="app.css") as demo:
                             size="large",
                             allow_clear=True,
                             placeholder="Please enter what kind of application you want",
+                            elem_style={"height": "200px"} 
                         )
                         btn = antd.Button("发送", type="primary", size="large")
-                        clear_btn = antd.Button(
-                            "清除对话记录", type="default", size="large"
-                        )
+                        clear_btn = antd.Button("清除对话记录", type="default", size="large", danger=True)
 
                         # examples
                         antd.Divider("应用案例")
                         with antd.Flex(gap="small", wrap=True):
                             with ms.Each(DEMO_LIST):
-                                with antd.Card(
-                                    hoverable=True, as_item="card"
-                                ) as demoCard:
+                                with antd.Card(hoverable=True, as_item="card" ) as demoCard:
                                     antd.CardMeta()
                                 demoCard.click(demo_card_click, outputs=[input])
-
+                        
+                        
                         # settings
                         antd.Divider("设置")
                         with antd.Flex(gap="small", wrap=True):
@@ -264,14 +232,25 @@ with gr.Blocks(css_paths="app.css") as demo:
                                 loading = antd.Spin(True, tip="coding...", size="large", elem_classes="right_content")
                             # 3. render
                             with antd.Tabs.Item(key="render"):
-                                # for simple html
-                                # sandbox = gr.HTML(elem_classes="html_content")
-                                # for react
                                 sandbox = pro.WebSandbox(
                                     height="600",
                                     elem_classes="output-html",
                                     template="html",
                                 )
+                                
+                                # # handle compile or render error in sandbox
+                                # def handle_render_error(error_msg):
+                                #     print(f"Render Error：{error_msg}")  
+                                #     return  {last_error: f"Render Error: {error_msg}"}  
+                                
+                                # def handle_compile_error(error_msg):
+                                #     print(f"Compile Error：{error_msg}")  
+                                #     return  {last_error: f"Compile Error: {error_msg}"}  
+                                # # compile error
+                                # sandbox.compile_error(handle_render_error, outputs=[last_error])
+                                # # render error
+                                # sandbox.render_error(handle_compile_error, outputs=[last_error])
+
 
 
             def generation_code(query: Optional[str], _setting: Dict[str, str], _history: Optional[History],):
@@ -345,4 +324,4 @@ with gr.Blocks(css_paths="app.css") as demo:
 
 
 if __name__ == "__main__":
-    demo.queue(default_concurrency_limit=20).launch(ssr_mode=False, share=False)
+    demo.queue(default_concurrency_limit=20).launch(ssr_mode=False, share=True, debug=False)
