@@ -96,6 +96,7 @@ def get_generated_files(text):
 
 
 def clear_history():
+    gr.Success("History Cleared.")
     return []
 
 
