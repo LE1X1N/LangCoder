@@ -6,14 +6,12 @@ from dashscope.api_entities.dashscope_response import Role
 import random
 from openai import OpenAI
 
-
 import modelscope_studio.components.base as ms
 import modelscope_studio.components.legacy as legacy
 import modelscope_studio.components.antd as antd
 import modelscope_studio.components.pro as pro
 
-
-from config import DEMO_LIST, SYSTEM_PROMPT
+from config.app_conf import DEMO_LIST, SYSTEM_PROMPT, REACT_IMPORTS
 
 # open-ai client
 # you can launch a local openai server with vLLM
@@ -22,35 +20,6 @@ client = OpenAI(
     api_key="token-xxxxx" 
 )
 MODEL = "Qwen2.5-Coder-7B-Instruct"
-
-
-react_imports = {
-    # Qwen 2.5
-    "antd": "https://esm.sh/antd@5.21.6",
-    "@ant-design/colors": "https://esm.sh/@ant-design/colors@7.0.0",
-    "@ant-design/icons": "https://esm.sh/@ant-design/icons@5.3.7",
-
-    "styled-components": "https://esm.sh/styled-components@6.1.19",
-    "semantic-ui-react": "https://esm.sh/semantic-ui-react@2.1.5",
-    "semantic-ui-css": "https://esm.sh/semantic-ui-css@2.5.0",
-    
-    # Qwen 3
-    "lucide-react": "https://esm.sh/lucide-react@0.525.0",
-    "recharts": "https://esm.sh/recharts@3.1.0",
-    "framer-motion": "https://esm.sh/framer-motion@12.23.6",
-    "matter-js": "https://esm.sh/matter-js@0.20.0",
-    "p5": "https://esm.sh/p5@2.0.3",
-    "konva": "https://esm.sh/konva@9.3.22",
-    "react-konva": "https://esm.sh/react-konva@19.0.7",
-    "three": "https://esm.sh/three@0.178.0",
-    "@react-three/fiber": "https://esm.sh/@react-three/fiber@9.2.0",
-    "@react-three/drei": "https://esm.sh/@react-three/drei@10.5.2",
-    "@tailwindcss/browser": "https://esm.sh/@tailwindcss/browser@4.1.11",
-    "react": "https://esm.sh/react@19.1.0",
-    "react/": "https://esm.sh/react@19.1.0/",
-    "react-dom": "https://esm.sh/react-dom@19.1.0",
-    "react-dom/": "https://esm.sh/react-dom@19.1.0/",
-}
 
 History = List[Tuple[str, str]]
 Messages = List[Dict[str, str]]
@@ -127,7 +96,7 @@ def handle_compile_success(task_id: int):
     print(f"Task_{task_id}:【编译成功】: 代码编译成功，无语法错误，开始渲染...")
 
 
-with gr.Blocks(css_paths="app.css") as demo:
+with gr.Blocks(css_paths="config/app.css") as demo:
     history = gr.State([])      # chat history
     setting = gr.State({"system": SYSTEM_PROMPT,})
     last_error = gr.State("")   # error 
@@ -259,7 +228,7 @@ with gr.Blocks(css_paths="app.css") as demo:
                                     elem_classes="output-html",
                                     template="html",
                                 )
-                                # errorr process
+                                # error process
                                 sandbox.compile_success(handle_compile_success, inputs=[current_task_id], outputs=[last_error])
                                 sandbox.compile_error(handle_compile_error, inputs=[current_task_id], outputs=[last_error])
                                 sandbox.render_error(handle_render_error, inputs=[current_task_id], outputs=[last_error])
@@ -309,7 +278,7 @@ with gr.Blocks(css_paths="app.css") as demo:
                             history: _history,
                             # sandbox: send_to_sandbox(remove_code_block(full_content)),                  
                             sandbox: gr.update(template="react" if react_code else "html",
-                                                imports=react_imports if react_code else {},
+                                                imports=REACT_IMPORTS if react_code else {},
                                                 height=900,
                                                 value={
                                                     "./index.tsx": """import Demo from './demo.tsx'

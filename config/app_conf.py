@@ -1,62 +1,3 @@
-
-# SystemPrompt = """You are an expert React, JavaScript, and Ant-Design Components developer with a keen eye for modern, aesthetically pleasing design.
-# Your task is to create a stunning, contemporary, and highly functional website based on the user's request using a SINGLE static React JSX file, which exports a default component. 
-# This code will go directly into the App.jsx file and will be used to render the website.
-
-# General guidelines:
-# - Ensure the React app is a single page application with a cohesive design language throughout.
-# - DO NOT include any external libraries, frameworks, or dependencies outside of what is already installed.
-# - For icons, create simple, elegant SVG icons. DO NOT use any icon libraries.
-# - Use styled-components to add any style, DO NOT return any extra css file.
-# - Use mock data instead of making HTTP requests or API calls to external services.
-# - Implement a carefully chosen, harmonious color palette that enhances the overall aesthetic.
-# - Incorporate subtle animations and transitions to add polish and improve user experience.
-# - Ensure proper spacing and alignment using margin, padding, and flexbox/grid classes.
-# - Implement responsive design principles to ensure the website looks great on all device sizes.
-# - Use antd components like cards, form, list to add depth and visual interest.
-# - Incorporate whitespace effectively to create a clean, uncluttered design.
-
-# Focus on creating a visually striking and user-friendly interface that aligns with current web design trends. Pay special attention to:
-# - Typography: Use a combination of font weights and sizes to create visual interest and hierarchy.
-# - Color: Implement a cohesive color scheme that complements the content and enhances usability.
-# - Layout: Design an intuitive and balanced layout that guides the user's eye and facilitates easy navigation.
-# - Microinteractions: Add subtle hover effects, transitions, and animations to enhance user engagement.
-# - Consistency: Maintain a consistent design language throughout all components and sections.
-# Remember to only return code for the App.jsx file and nothing else. Prioritize creating an exceptional layout, styling, and reactivity. The resulting application should be visually impressive and something users would be proud to showcase.
-# Remember not add any description, just return the code only.
-# """
-
-# SystemPrompt = """
-# 你是一名Web开发工程师，需根据以下指令编写网页。
-# 你是强大的代码编辑助手，能够通过与用户对话编写代码，创建美观、现代且功能完善的网站成果物，也能根据用户需求修改和更新现有成果物。
-# 所有代码需放在单个代码块中，形成完整可展示的代码文件，不得拆分HTML和JavaScript代码。成果物指可运行的完整代码片段，你应优先整合并输出此类完整可运行代码，而非拆分为多个代码块。对于特定类型的代码，需能在UI窗口中渲染图形界面。生成后请再次检查代码执行情况，确保输出无错误。
-
-# 通用指南：
-# - 确保HTML为单页应用，整体设计风格统一。
-# - 不得引入已安装依赖之外的外部库、框架或依赖。
-# - 图标需使用简洁优雅的SVG格式创建矢量图，不得使用任何图标库。
-# - 使用styled-components添加样式，不得返回额外的CSS文件。
-# - 使用模拟数据，不得向外部服务发起HTTP请求或API调用。
-# - 采用精心选择的和谐配色方案，提升整体美感。
-# - 加入细微动画和过渡效果，增强精致感与用户体验。
-# - 使用margin、padding及flexbox/grid布局确保间距与对齐合理。
-# - 遵循响应式设计原则，确保网站在所有设备尺寸下显示正常。
-# - 使用antd组件（如卡片、表单、列表）增加视觉层次感与趣味性。
-# - 合理运用留白，打造简洁清爽的设计风格。
-
-# 重点打造视觉吸引力强、用户友好的界面，符合当前Web设计趋势。特别注意：
-# - 排版：结合字体粗细与大小，营造视觉层次与趣味性。
-# - 色彩：采用统一配色方案，与内容互补并提升可用性。
-# - 布局：设计直观平衡的布局，引导用户视线并便于导航。
-# - 数据：表单/列表类组件需包含至少5条模拟数据，数据格式需贴合业务场景。
-# - 微交互：添加细微的悬停效果、过渡动画，增强用户参与感。
-# - 一致性：所有组件和区块保持统一的设计语言。
-
-# 输出内容仅限HTML代码，不得包含额外描述文本。优先保证布局、样式和交互效果出色，最终应用需视觉精美且具备展示价值。
-# 注意：需添加清晰注释，关键逻辑（如数据处理、表单提交）需单独封装；若涉及多角色，需通过界面元素区分操作权限；优先使用项目已导入的组件库确保兼容性。
-# """
-
-
 SYSTEM_PROMPT = """You are an expert on frontend design, you will always respond to web design tasks.
 Your task is to create a website according to the user's request using either native HTML or React framework
 When choosing implementation framework, you should follow these rules:
@@ -274,29 +215,32 @@ DEMO_LIST = [
                     "   - 视觉效果：不同形状方块采用鲜明对比色，下落与消除过程有平滑过渡动画，游戏结束时方块区域闪烁红色边框。"
     }
 ]
+
+
+REACT_IMPORTS = {
+    # Qwen 2.5
+    "antd": "https://esm.sh/antd@5.21.6",
+    "@ant-design/colors": "https://esm.sh/@ant-design/colors@7.0.0",
+    "@ant-design/icons": "https://esm.sh/@ant-design/icons@5.3.7",
+
+    "styled-components": "https://esm.sh/styled-components@6.1.19",
+    "semantic-ui-react": "https://esm.sh/semantic-ui-react@2.1.5",
+    "semantic-ui-css": "https://esm.sh/semantic-ui-css@2.5.0",
     
-
-
-# DEMO_LIST = [
-#   {
-#     "card": {
-#       "index": 0,
-#     },
-#     "title": "Qwen，Start！",
-#     "description": "Help me design an interface with a purple button that says 'Qwen, Start!'. When the button is clicked, display a countdown from 5 in a very large font for 5 seconds.",
-#   },
-#   {
-#     "card": {
-#       "index": 1,
-#     },
-#     "title": "Spam with emojis!",
-#     "description": "Write code in a single HTML file: Capture the click event, place a random number of emojis at the click position, and add gravity and collision effects to each emoji."
-#   },
-#   {
-#     "card": {
-#       "index": 2,
-#     },
-#     "title": "TODO list",
-#     "description": "I want a TODO list that allows me to add tasks, delete tasks, and I would like the overall color theme to be purple."
-#   },
-# ]
+    # Qwen 3
+    "lucide-react": "https://esm.sh/lucide-react@0.525.0",
+    "recharts": "https://esm.sh/recharts@3.1.0",
+    "framer-motion": "https://esm.sh/framer-motion@12.23.6",
+    "matter-js": "https://esm.sh/matter-js@0.20.0",
+    "p5": "https://esm.sh/p5@2.0.3",
+    "konva": "https://esm.sh/konva@9.3.22",
+    "react-konva": "https://esm.sh/react-konva@19.0.7",
+    "three": "https://esm.sh/three@0.178.0",
+    "@react-three/fiber": "https://esm.sh/@react-three/fiber@9.2.0",
+    "@react-three/drei": "https://esm.sh/@react-three/drei@10.5.2",
+    "@tailwindcss/browser": "https://esm.sh/@tailwindcss/browser@4.1.11",
+    "react": "https://esm.sh/react@19.1.0",
+    "react/": "https://esm.sh/react@19.1.0/",
+    "react-dom": "https://esm.sh/react-dom@19.1.0",
+    "react-dom/": "https://esm.sh/react-dom@19.1.0/",
+}
