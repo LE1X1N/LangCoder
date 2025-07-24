@@ -1,11 +1,11 @@
 import re
 from typing import Dict, List, Optional, Tuple
-import base64
 
 import gradio as gr
 from dashscope.api_entities.dashscope_response import Role
-
+import random
 from openai import OpenAI
+
 
 import modelscope_studio.components.base as ms
 import modelscope_studio.components.legacy as legacy
@@ -25,6 +25,16 @@ MODEL = "Qwen2.5-Coder-7B-Instruct"
 
 
 react_imports = {
+    # Qwen 2.5
+    "antd": "https://esm.sh/antd@5.21.6",
+    "@ant-design/colors": "https://esm.sh/@ant-design/colors@7.0.0",
+    "@ant-design/icons": "https://esm.sh/@ant-design/icons@5.3.7",
+
+    "styled-components": "https://esm.sh/styled-components@6.1.19",
+    "semantic-ui-react": "https://esm.sh/semantic-ui-react@2.1.5",
+    "semantic-ui-css": "https://esm.sh/semantic-ui-css@2.5.0",
+    
+    # Qwen 3
     "lucide-react": "https://esm.sh/lucide-react@0.525.0",
     "recharts": "https://esm.sh/recharts@3.1.0",
     "framer-motion": "https://esm.sh/framer-motion@12.23.6",
@@ -40,11 +50,6 @@ react_imports = {
     "react/": "https://esm.sh/react@19.1.0/",
     "react-dom": "https://esm.sh/react-dom@19.1.0",
     "react-dom/": "https://esm.sh/react-dom@19.1.0/",
-    
-    # new
-    "antd": "https://esm.sh/antd@5.21.6",
-    "react-router-dom": "https://esm.sh/react-router-dom@7.7.0",
-    "@ant-design/icons": "https://esm.sh/@ant-design/icons@6.1.0"
 }
 
 History = List[Tuple[str, str]]
@@ -97,18 +102,36 @@ def get_generated_files(text):
 
 def clear_history():
     gr.Success("History Cleared.")
-    return []
+    return [], ""
 
 
 def demo_card_click(e: gr.EventData, ):
     index = e._data["component"]["index"]
     return DEMO_LIST[index]["prompt"]
 
+
+"""
+    Handle Sandbox compile or render error
+"""
+def handle_compile_error(e: gr.EventData, task_id: int):
+    error_msg = e._data  # 
+    print(f"Task_{task_id}【编译错误】： {error_msg}")
+    return {last_error: f"Compile Error: {error_msg}"}
+
+def handle_render_error(e: gr.EventData, task_id: int):
+    error_msg = e._data['payload'][0] 
+    print(f"Task_{task_id}:【渲染错误】: {error_msg}")
+    return {last_error: f"Render Error: {error_msg}"}
+
+def handle_compile_success(task_id: int):
+    print(f"Task_{task_id}:【编译成功】: 代码编译成功，无语法错误，开始渲染...")
+
+
 with gr.Blocks(css_paths="app.css") as demo:
     history = gr.State([])      # chat history
-    setting = gr.State(
-        {"system": SYSTEM_PROMPT,}
-    )
+    setting = gr.State({"system": SYSTEM_PROMPT,})
+    last_error = gr.State("")   # error 
+    current_task_id = gr.State("")      # task 
 
     with ms.Application() as app:
         with antd.ConfigProvider():
@@ -117,16 +140,14 @@ with gr.Blocks(css_paths="app.css") as demo:
                 """Left side (input area)"""
                 with antd.Col(span=24, md=8):
                     with antd.Flex(vertical=True, gap="middle", wrap=True):
-                        # header 
-                        # header = gr.HTML(
-                        #     """
-                        #         <div class="left_header">
-                        #             <img src="//img.alicdn.com/imgextra/i2/O1CN01KDhOma1DUo8oa7OIU_!!6000000000220-1-tps-240-240.gif" width="200px" />
-                        #             <h1>HTML界面设计</h2>
-                        #         </div>
-                        #     """
-                        # )
+                        # header
                         header = gr.HTML(
+                            # """
+                            #     <div class="left_header">
+                            #         <img src="//img.alicdn.com/imgextra/i2/O1CN01KDhOma1DUo8oa7OIU_!!6000000000220-1-tps-240-240.gif" width="200px" />
+                            #         <h1>网站界面设计</h2>
+                            #     </div>
+                            # """
                             """
                                 <div class="left_header">
                                     <h1>网站界面设计</h2>
@@ -238,19 +259,10 @@ with gr.Blocks(css_paths="app.css") as demo:
                                     elem_classes="output-html",
                                     template="html",
                                 )
-                                
-                                # # handle compile or render error in sandbox
-                                # def handle_render_error(error_msg):
-                                #     print(f"Render Error：{error_msg}")  
-                                #     return  {last_error: f"Render Error: {error_msg}"}  
-                                
-                                # def handle_compile_error(error_msg):
-                                #     print(f"Compile Error：{error_msg}")  
-                                #     return  {last_error: f"Compile Error: {error_msg}"}  
-                                # # compile error
-                                # sandbox.compile_error(handle_render_error, outputs=[last_error])
-                                # # render error
-                                # sandbox.render_error(handle_compile_error, outputs=[last_error])
+                                # errorr process
+                                sandbox.compile_success(handle_compile_success, inputs=[current_task_id], outputs=[last_error])
+                                sandbox.compile_error(handle_compile_error, inputs=[current_task_id], outputs=[last_error])
+                                sandbox.render_error(handle_render_error, inputs=[current_task_id], outputs=[last_error])
 
 
 
@@ -259,14 +271,17 @@ with gr.Blocks(css_paths="app.css") as demo:
                     query = ""
                 if _history is None:
                     _history = []
+
+                task_id = random.randint(1000, 9999)
+                    
                 messages = history_to_messages(_history, _setting["system"])
                 messages.append({"role": Role.USER, "content": query})
    
                 # open-ai compatible generation
                 gen = client.chat.completions.create(
-                    model=MODEL,  
-                    messages=messages, 
-                    stream=True
+                        model=MODEL,  
+                        messages=messages, 
+                        stream=True
                     )
 
                 full_content = ""  
@@ -306,6 +321,7 @@ with gr.Blocks(css_paths="app.css") as demo:
                                                 ),
                             state_tab: gr.update(active_key="render"),
                             code_drawer: gr.update(open=False),
+                            current_task_id: task_id,
                         }
                     else:
                         # loading state
@@ -313,16 +329,17 @@ with gr.Blocks(css_paths="app.css") as demo:
                             code_output: full_content,  
                             state_tab: gr.update(active_key="loading"),
                             code_drawer: gr.update(open=True),
+                            current_task_id: task_id,
                         }
                 
             btn.click(
                 generation_code,
                 inputs=[input, setting, history],
-                outputs=[code_output, history, sandbox, state_tab, code_drawer],
+                outputs=[code_output, history, sandbox, state_tab, code_drawer, current_task_id],
             )
 
-            clear_btn.click(clear_history, inputs=[], outputs=[history])
+            clear_btn.click(clear_history, inputs=[], outputs=[history, input])
 
 
 if __name__ == "__main__":
-    demo.queue(default_concurrency_limit=20).launch(ssr_mode=False, share=True, debug=False)
+    demo.queue(default_concurrency_limit=20).launch(ssr_mode=False, share=False, debug=False)
