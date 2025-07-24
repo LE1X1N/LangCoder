@@ -2,6 +2,7 @@ import re
 from typing import Dict, List, Optional, Tuple
 
 import gradio as gr
+
 from dashscope.api_entities.dashscope_response import Role
 import random
 from openai import OpenAI
@@ -11,7 +12,11 @@ import modelscope_studio.components.legacy as legacy
 import modelscope_studio.components.antd as antd
 import modelscope_studio.components.pro as pro
 
-from config.app_conf import DEMO_LIST, SYSTEM_PROMPT, REACT_IMPORTS
+from config.app_conf import DEMO_LIST, SYSTEM_PROMPT, REACT_IMPORTS, SERVICE_NAME
+from util.utils import *
+
+# logger
+logger = setup_logger(SERVICE_NAME)
 
 # open-ai client
 # you can launch a local openai server with vLLM
@@ -38,36 +43,8 @@ def messages_to_history(messages: Messages) -> Tuple[str, History]:
         history.append([q["content"], r["content"]])
     return history
 
-def remove_code_block(text):
-    pattern = r"```html\n(.+?)\n```"
-    match = re.search(pattern, text, re.DOTALL)
-    if match:
-        return match.group(1).strip()
-    else:
-        return text.strip()
-
 def history_render(history: History):
     return gr.update(open=True), history
-
-
-def get_generated_files(text):
-    patterns = {
-        'html': r'```html\n(.+?)\n```',
-        'jsx': r'```jsx\n(.+?)\n```',
-        'tsx': r'```tsx\n(.+?)\n```',
-    }
-    result = {}
-
-    for ext, pattern in patterns.items():
-        matches = re.findall(pattern, text, re.DOTALL)
-        if matches:
-            content = '\n'.join(matches).strip()
-            result[f'index.{ext}'] = content
-
-    if len(result) == 0:
-        result["index.html"] = text.strip()
-    return result
-
 
 def clear_history():
     gr.Success("History Cleared.")
@@ -79,24 +56,24 @@ def demo_card_click(e: gr.EventData, ):
     return DEMO_LIST[index]["prompt"]
 
 
-"""
-    Handle Sandbox compile or render error
-"""
+# Handle Sandbox compile or render error
 def handle_compile_error(e: gr.EventData, task_id: int):
     error_msg = e._data  # 
-    print(f"Task_{task_id}【编译错误】： {error_msg}")
+    logger.error(f"Task_{task_id}【编译错误】： {error_msg}")
     return {last_error: f"Compile Error: {error_msg}"}
 
 def handle_render_error(e: gr.EventData, task_id: int):
     error_msg = e._data['payload'][0] 
-    print(f"Task_{task_id}:【渲染错误】: {error_msg}")
+    logger.error(f"Task_{task_id}:【渲染错误】: {error_msg}")
     return {last_error: f"Render Error: {error_msg}"}
 
 def handle_compile_success(task_id: int):
-    print(f"Task_{task_id}:【编译成功】: 代码编译成功，无语法错误，开始渲染...")
+    logger.info(f"Task_{task_id}:【编译成功】: 代码编译成功，无语法错误，开始渲染...")
 
 
 with gr.Blocks(css_paths="config/app.css") as demo:
+
+    # gradio state
     history = gr.State([])      # chat history
     setting = gr.State({"system": SYSTEM_PROMPT,})
     last_error = gr.State("")   # error 

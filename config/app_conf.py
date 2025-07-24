@@ -121,7 +121,7 @@ Remember to only return code for the App.jsx file and nothing else. The resultin
 # 记住只返回App.jsx文件的代码，不要返回其他内容。生成的应用程序应该具有令人印象深刻的视觉效果、强大的功能，是用户会自豪地展示的作品。
 # """
 
-    
+SERVICE_NAME = "Qwen-Coder"
 
 DEMO_LIST = [
     {
