@@ -313,7 +313,7 @@ const App = () => {
       {/* 左侧侧边栏*/}
       <motion.aside 
         className="bg-slate-800 text-slate-100 w-64 flex flex-col items-center justify-start p-4 shadow-md" 
-        initial={{ x: -50 }} 
+        initial={{ x: 0 }} 
         animate={{ x: 0 }} 
         transition={{ duration: 0.3 }}
       >

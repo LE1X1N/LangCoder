@@ -2,6 +2,7 @@ import re
 from typing import Dict, List, Optional, Tuple
 
 import gradio as gr
+import time
 
 from dashscope.api_entities.dashscope_response import Role
 import random
@@ -47,7 +48,7 @@ def history_render(history: History):
     return gr.update(open=True), history
 
 def clear_history():
-    gr.Success("History Cleared.")
+    gr.Success("History Cleared.", duration=5)
     return [], ""
 
 
@@ -55,29 +56,120 @@ def demo_card_click(e: gr.EventData, ):
     index = e._data["component"]["index"]
     return DEMO_LIST[index]["prompt"]
 
-
 # Handle Sandbox compile or render error
-def handle_compile_error(e: gr.EventData, task_id: int):
-    error_msg = e._data  # 
-    logger.error(f"Task_{task_id}【编译错误】： {error_msg}")
-    return {last_error: f"Compile Error: {error_msg}"}
-
-def handle_render_error(e: gr.EventData, task_id: int):
-    error_msg = e._data['payload'][0] 
-    logger.error(f"Task_{task_id}:【渲染错误】: {error_msg}")
-    return {last_error: f"Render Error: {error_msg}"}
-
-def handle_compile_success(task_id: int):
+def handle_compile_success(e: gr.EventData, task_id: int):
     logger.info(f"Task_{task_id}:【编译成功】: 代码编译成功，无语法错误，开始渲染...")
+    gr.Success(f"界面编译成功！", duration=5)
+    
+    
+    yield {
+        input: gr.update(
+                    value = None,
+                    placeholder="请描述需要修改的地方：",
+                    elem_style={"height": "200px"} 
+                )
+    }
+
+
+def handle_compile_error(e: gr.EventData, task_id: int, _setting: Dict[str, str], _history: Optional[History],):
+    # Frontend compile error
+    error_prompt = f"【编译错误】：{e._data['payload'][0]}"
+    logger.error(f"Task_{task_id} {error_prompt}")
+    gr.Warning(f"界面编译失败！正在重新进行代码生成...", duration=20)
+    # regenerate code
+    yield from generation_code(error_prompt, _setting, _history, task_id)
+
+
+def handle_render_error(e: gr.EventData, task_id: int, _setting: Dict[str, str], _history: Optional[History],):
+    # Frontend render error
+    error_prompt = f"【渲染错误】：{e._data['payload'][0]}"
+    logger.error(f"Task_{task_id} :{error_prompt}")
+    gr.Warning(f"界面渲染失败！正在重新进行代码生成...", duration=20)
+    
+    # regenerate code
+    yield from generation_code(error_prompt, _setting, _history, task_id)
+    
+
+
+def generation_code(query: Optional[str], _setting: Dict[str, str], _history: Optional[History], task_id: Optional[int]=None):  
+    if query is None:
+        query = ""
+    if _history is None:
+        _history = []
+
+    if task_id is None:
+        task_id = random.randint(1000, 9999)
+    else:
+        logger.info(f"Task_{task_id} 模型再次生成开始...")                
+                    
+    messages = history_to_messages(_history, _setting["system"])
+    messages.append({"role": Role.USER, "content": query})
+   
+    # open-ai compatible generation
+    gen = client.chat.completions.create(
+            model=MODEL,  
+            messages=messages, 
+            stream=True
+        )
+
+    full_content = "" 
+    start_time = time.time()
+    
+    for chunk in gen:
+        content = chunk.choices[0].delta.content or ""
+        full_content += content
+                    
+        finish_reason = chunk.choices[0].finish_reason
+                    
+        if finish_reason == "stop":
+            # finish state
+            _history = messages_to_history(
+                messages + [{"role": "assistant", "content": full_content}]
+            )
+            # print("history")
+            # print(_history)
+            
+            logger.info(f"Task_{task_id} 模型生成成功，耗时 {time.time() - start_time} 秒.")
+                        
+            generated_files = get_generated_files(full_content)
+            react_code = generated_files.get("index.tsx") or generated_files.get("index.jsx")
+            html_code = generated_files.get("index.html")
+                        
+            yield {
+                code_output: full_content,
+                history: _history,
+                # sandbox: send_to_sandbox(remove_code_block(full_content)),                  
+                sandbox: gr.update(template="react" if react_code else "html",
+                                    imports=REACT_IMPORTS if react_code else {},
+                                    height=700,
+                                    value={
+                                        "./index.tsx": """import Demo from './demo.tsx'
+                                                        import "@tailwindcss/browser"
+                                                        export default Demo
+                                                        """,
+                                        "./demo.tsx": react_code
+                                        } if react_code else {"./index.html": html_code},
+                                    ),
+                state_tab: gr.update(active_key="render"),
+                code_drawer: gr.update(open=False),
+                current_task_id: task_id,
+            }
+        else:
+            # loading state
+            yield {
+                code_output: full_content,  
+                state_tab: gr.update(active_key="loading"),
+                code_drawer: gr.update(open=True),
+                current_task_id: task_id,
+            }
 
 
 with gr.Blocks(css_paths="config/app.css") as demo:
-
     # gradio state
     history = gr.State([])      # chat history
     setting = gr.State({"system": SYSTEM_PROMPT,})
-    last_error = gr.State("")   # error 
     current_task_id = gr.State("")      # task 
+    # render_success = gr.State(False)     # render success flat
 
     with ms.Application() as app:
         with antd.ConfigProvider():
@@ -88,12 +180,6 @@ with gr.Blocks(css_paths="config/app.css") as demo:
                     with antd.Flex(vertical=True, gap="middle", wrap=True):
                         # header
                         header = gr.HTML(
-                            # """
-                            #     <div class="left_header">
-                            #         <img src="//img.alicdn.com/imgextra/i2/O1CN01KDhOma1DUo8oa7OIU_!!6000000000220-1-tps-240-240.gif" width="200px" />
-                            #         <h1>网站界面设计</h2>
-                            #     </div>
-                            # """
                             """
                                 <div class="left_header">
                                     <h1>网站界面设计</h2>
@@ -108,7 +194,7 @@ with gr.Blocks(css_paths="config/app.css") as demo:
                             placeholder="Please enter what kind of application you want",
                             elem_style={"height": "200px"} 
                         )
-                        btn = antd.Button("发送", type="primary", size="large")
+                        submit_btn = antd.Button("发送", type="primary", size="large")
                         clear_btn = antd.Button("清除对话记录", type="default", size="large", danger=True)
 
                         # examples
@@ -118,7 +204,6 @@ with gr.Blocks(css_paths="config/app.css") as demo:
                                 with antd.Card(hoverable=True, as_item="card" ) as demoCard:
                                     antd.CardMeta()
                                 demoCard.click(demo_card_click, outputs=[input])
-                        
                         
                         # settings
                         antd.Divider("设置")
@@ -201,84 +286,16 @@ with gr.Blocks(css_paths="config/app.css") as demo:
                             # 3. render
                             with antd.Tabs.Item(key="render"):
                                 sandbox = pro.WebSandbox(
-                                    height="600",
+                                    height=700,
                                     elem_classes="output-html",
                                     template="html",
                                 )
                                 # error process
-                                sandbox.compile_success(handle_compile_success, inputs=[current_task_id], outputs=[last_error])
-                                sandbox.compile_error(handle_compile_error, inputs=[current_task_id], outputs=[last_error])
-                                sandbox.render_error(handle_render_error, inputs=[current_task_id], outputs=[last_error])
-
-
-
-            def generation_code(query: Optional[str], _setting: Dict[str, str], _history: Optional[History],):
-                if query is None:
-                    query = ""
-                if _history is None:
-                    _history = []
-
-                task_id = random.randint(1000, 9999)
-                    
-                messages = history_to_messages(_history, _setting["system"])
-                messages.append({"role": Role.USER, "content": query})
-   
-                # open-ai compatible generation
-                gen = client.chat.completions.create(
-                        model=MODEL,  
-                        messages=messages, 
-                        stream=True
-                    )
-
-                full_content = ""  
+                                sandbox.compile_error(handle_compile_error, inputs=[current_task_id, setting, history], outputs=[code_output, history, sandbox, state_tab, code_drawer, current_task_id])
+                                sandbox.render_error(handle_render_error, inputs=[current_task_id, setting, history], outputs=[code_output, history, sandbox, state_tab, code_drawer, current_task_id])
+                                sandbox.compile_success(handle_compile_success, inputs=[current_task_id], outputs=[input])
                 
-                for chunk in gen:
-                    content = chunk.choices[0].delta.content or ""
-                    full_content += content
-                    
-                    finish_reason = chunk.choices[0].finish_reason
-                    
-                    if finish_reason == "stop":
-                        # finish state
-                        _history = messages_to_history(
-                            messages + [{"role": "assistant", "content": full_content}]
-                        )
-                        # print("history")
-                        # print(_history)
-                        
-                        generated_files = get_generated_files(full_content)
-                        react_code = generated_files.get("index.tsx") or generated_files.get("index.jsx")
-                        html_code = generated_files.get("index.html")
-                        
-                        yield {
-                            code_output: full_content,
-                            history: _history,
-                            # sandbox: send_to_sandbox(remove_code_block(full_content)),                  
-                            sandbox: gr.update(template="react" if react_code else "html",
-                                                imports=REACT_IMPORTS if react_code else {},
-                                                height=900,
-                                                value={
-                                                    "./index.tsx": """import Demo from './demo.tsx'
-                                                                    import "@tailwindcss/browser"
-                                                                    export default Demo
-                                                                    """,
-                                                    "./demo.tsx": react_code
-                                                    } if react_code else {"./index.html": html_code},
-                                                ),
-                            state_tab: gr.update(active_key="render"),
-                            code_drawer: gr.update(open=False),
-                            current_task_id: task_id,
-                        }
-                    else:
-                        # loading state
-                        yield {
-                            code_output: full_content,  
-                            state_tab: gr.update(active_key="loading"),
-                            code_drawer: gr.update(open=True),
-                            current_task_id: task_id,
-                        }
-                
-            btn.click(
+            submit_btn.click(
                 generation_code,
                 inputs=[input, setting, history],
                 outputs=[code_output, history, sandbox, state_tab, code_drawer, current_task_id],
@@ -288,4 +305,4 @@ with gr.Blocks(css_paths="config/app.css") as demo:
 
 
 if __name__ == "__main__":
-    demo.queue(default_concurrency_limit=20).launch(ssr_mode=False, share=False, debug=False)
+    demo.queue(default_concurrency_limit=20).launch(ssr_mode=False, share=True, debug=False)
