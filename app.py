@@ -13,19 +13,23 @@ import modelscope_studio.components.legacy as legacy
 import modelscope_studio.components.antd as antd
 import modelscope_studio.components.pro as pro
 
-from config.app_conf import DEMO_LIST, SYSTEM_PROMPT, REACT_IMPORTS, SERVICE_NAME
+from config.app_conf import SYSTEM_PROMPT, REACT_IMPORTS, SERVICE_NAME, ALL_DEMOS
 from util.utils import *
 
 # logger
 logger = setup_logger(SERVICE_NAME)
 
+DEMO_LIST = ALL_DEMOS[0]
+PORT = 7860
+
 # open-ai client
 # you can launch a local openai server with vLLM
 client = OpenAI(
-    base_url="http://localhost:8000/v1",  
-    api_key="token-xxxxx" 
+    base_url="http://oneapi.aimc.offline/v1",  
+    api_key="sk-XXXXX" 
 )
-MODEL = "Qwen2.5-Coder-7B-Instruct"
+# MODEL = "Qwen2.5-Coder-7B-Instruct"
+MODEL = "doubao-seed-1.6"
 
 History = List[Tuple[str, str]]
 Messages = List[Dict[str, str]]
@@ -58,7 +62,7 @@ class GradioEvents:
             task_id = random.randint(1000, 9999)
         else:
             logger.info(f"Task_{task_id} 模型再次生成开始...")                
-                        
+
         messages = history_to_messages(_history, _setting["system"])
         messages.append({"role": Role.USER, "content": query})
     
@@ -66,7 +70,13 @@ class GradioEvents:
         gen = client.chat.completions.create(
                 model=MODEL,  
                 messages=messages, 
-                stream=True
+                stream=True,
+                extra_headers={
+                    'AIMC-OrderId': "coder-test-leixin",
+                    'AIMC-OrderType': "test",
+                    'AIMC-Remarks' : "test-leixin",
+                    'DOUBAO-THINKING': "disabled"  
+                }
             )
 
         full_content = "" 
@@ -140,8 +150,7 @@ class GradioEvents:
     def handle_compile_success(e: gr.EventData, task_id: int):
         logger.info(f"Task_{task_id}:【编译成功】: 代码编译成功，无语法错误，开始渲染...")
         gr.Success(f"界面编译成功！", duration=5)
-        
-        
+         
         yield {
             input: gr.update(
                         value = None,
@@ -169,8 +178,6 @@ class GradioEvents:
         # regenerate code
         yield from GradioEvents.generation_code(error_prompt, _setting, _history, task_id)
         
-
-
 
 
 with gr.Blocks(css_paths="config/app.css") as demo:
@@ -271,7 +278,6 @@ with gr.Blocks(css_paths="config/app.css") as demo:
                     )
                     
                     
-
 
                 """ Right side (output area) """
                 with antd.Col(span=24, md=16):
@@ -375,5 +381,6 @@ with gr.Blocks(css_paths="config/app.css") as demo:
             code_btn.click(lambda: gr.update(open=True), inputs=[], outputs=[code_drawer])
             history_btn.click(GradioEvents.history_render, inputs=[history], outputs=[history_drawer, history_output],)
 
+
 if __name__ == "__main__":
-    demo.queue(default_concurrency_limit=20).launch(ssr_mode=False, share=False, debug=False)
+    demo.queue(default_concurrency_limit=20).launch(ssr_mode=False, share=False, debug=False, server_port=PORT)
