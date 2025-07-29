@@ -15,21 +15,40 @@ import modelscope_studio.components.pro as pro
 
 from config.app_conf import SYSTEM_PROMPT, REACT_IMPORTS, SERVICE_NAME, ALL_DEMOS
 from util.utils import *
+import argparse
 
 # logger
 logger = setup_logger(SERVICE_NAME)
 
-DEMO_LIST = ALL_DEMOS[0]
-PORT = 7860
+
+# parser
+parser = argparse.ArgumentParser(description="A gradio demo used for generating react-based frontend.")
+parser.add_argument("--demo", type=int, help="which demo used for illustration (0 - 10)", default=0)
+parser.add_argument("--port", type=int, help="gradio server port", default=8686)
+parser.add_argument("--model", type=str, help="coder model", default='deepseek-v3')
+
+args = parser.parse_args()
+
+DEMO_LIST = ALL_DEMOS[args.demo]
+PORT = args.port
+MODEL = args.model
+# BASE_URL = "http://oneapi.aimc.offline/v1"
+
+BASE_URL = "http://localhost:8000/v1"
 
 # open-ai client
 # you can launch a local openai server with vLLM
 client = OpenAI(
-    base_url="http://oneapi.aimc.offline/v1",  
-    api_key="sk-XXXXX" 
+    base_url=BASE_URL,  
+    api_key="sk-xxxxxx" 
 )
 # MODEL = "Qwen2.5-Coder-7B-Instruct"
-MODEL = "doubao-seed-1.6"
+
+print(f"Current demo: {DEMO_LIST[0]["prompt"]}")
+print(f"Port: {PORT}")
+print(f"Model: {MODEL}")
+
+
 
 History = List[Tuple[str, str]]
 Messages = List[Dict[str, str]]
@@ -83,9 +102,13 @@ class GradioEvents:
         start_time = time.time()
         
         for chunk in gen:
+            if len(chunk.choices) == 0:
+                # chat completion
+                break
+            
             content = chunk.choices[0].delta.content or ""
             full_content += content
-                        
+
             finish_reason = chunk.choices[0].finish_reason
                         
             if finish_reason == "stop":
@@ -383,4 +406,4 @@ with gr.Blocks(css_paths="config/app.css") as demo:
 
 
 if __name__ == "__main__":
-    demo.queue(default_concurrency_limit=20).launch(ssr_mode=False, share=False, debug=False, server_port=PORT)
+    demo.launch(ssr_mode=False, share=False, debug=False, server_port=PORT)
