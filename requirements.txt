@@ -1,3 +1,4 @@
+concurrent_log_handler==0.9.28
 dashscope==1.23.9
 gradio==5.38.0
 modelscope_studio==1.4.3
