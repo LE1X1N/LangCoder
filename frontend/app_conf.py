@@ -65,16 +65,18 @@ SERVICE_NAME = "Qwen-Coder"
 
 REACT_IMPORTS = {
     # Qwen 2.5
-    # "antd": "https://esm.sh/antd@5.21.6",
-    "antd": "https://esm.sh/antd@3.26.20",
+    "antd": "https://esm.sh/antd@5.21.6",
+    # "antd": "https://esm.sh/antd@3.26.20",
     "@ant-design/colors": "https://esm.sh/@ant-design/colors@5.0.0",
     "@ant-design/icons": "https://esm.sh/@ant-design/icons@5.3.7",
+    
     "styled-components": "https://esm.sh/styled-components@6.1.19",
     "semantic-ui-react": "https://esm.sh/semantic-ui-react@2.1.5",
     "semantic-ui-css": "https://esm.sh/semantic-ui-css@2.5.0",
     
     # Qwen 3
     "lucide-react": "https://esm.sh/lucide-react@0.525.0",
+    
     "recharts": "https://esm.sh/recharts@3.1.0",
     "framer-motion": "https://esm.sh/framer-motion@12.23.6",
     "matter-js": "https://esm.sh/matter-js@0.20.0",
@@ -82,13 +84,16 @@ REACT_IMPORTS = {
     "konva": "https://esm.sh/konva@9.3.22",
     "react-konva": "https://esm.sh/react-konva@19.0.7",
     "three": "https://esm.sh/three@0.178.0",
+    
     "@react-three/fiber": "https://esm.sh/@react-three/fiber@9.2.0",
     "@react-three/drei": "https://esm.sh/@react-three/drei@10.5.2",
+    
     "@tailwindcss/browser": "https://esm.sh/@tailwindcss/browser@4.1.11",
-    "react": "https://esm.sh/react@19.1.0",
-    "react/": "https://esm.sh/react@19.1.0/",
-    "react-dom": "https://esm.sh/react-dom@19.1.0",
-    "react-dom/": "https://esm.sh/react-dom@19.1.0/",
+    
+    # "react": "https://esm.sh/react@19.1.0",
+    # "react/": "https://esm.sh/react@19.1.0/",
+    # "react-dom": "https://esm.sh/react-dom@19.1.0",
+    # "react-dom/": "https://esm.sh/react-dom@19.1.0/",
     
     # other
     "dayjs" : "https://esm.sh/dayjs"

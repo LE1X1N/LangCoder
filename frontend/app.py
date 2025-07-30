@@ -1,4 +1,3 @@
-import re
 from typing import Dict, List, Optional, Tuple
 
 import gradio as gr
@@ -13,41 +12,30 @@ import modelscope_studio.components.legacy as legacy
 import modelscope_studio.components.antd as antd
 import modelscope_studio.components.pro as pro
 
-from config.app_conf import SYSTEM_PROMPT, REACT_IMPORTS, SERVICE_NAME, ALL_DEMOS
-from util.utils import *
-import argparse
+from .app_conf import SYSTEM_PROMPT, REACT_IMPORTS, SERVICE_NAME, ALL_DEMOS
+from util import *
+import yaml
 
 # logger
 logger = setup_logger(SERVICE_NAME)
 
+with open("config/system_conf.yaml", "r") as f:
+    conf = yaml.safe_load(f)
 
-# parser
-parser = argparse.ArgumentParser(description="A gradio demo used for generating react-based frontend.")
-parser.add_argument("--demo", type=int, help="which demo used for illustration (0 - 10)", default=0)
-parser.add_argument("--port", type=int, help="gradio server port", default=8686)
-parser.add_argument("--model", type=str, help="coder model", default='deepseek-v3')
 
-args = parser.parse_args()
-
-DEMO_LIST = ALL_DEMOS[args.demo]
-PORT = args.port
-MODEL = args.model
-# BASE_URL = "http://oneapi.aimc.offline/v1"
-
-BASE_URL = "http://localhost:8000/v1"
+DEMO_LIST = ALL_DEMOS[random.randint(0, 10)]
 
 # open-ai client
-# you can launch a local openai server with vLLM
 client = OpenAI(
-    base_url=BASE_URL,  
-    api_key="sk-xxxxxx" 
+    base_url=conf["base_url"],  
+    api_key=conf["api_key"] 
 )
-# MODEL = "Qwen2.5-Coder-7B-Instruct"
+MODEL = conf["model"]
 
-print(f"Current demo: {DEMO_LIST[0]["prompt"]}")
-print(f"Port: {PORT}")
+PORT = conf["port"]
+
+print(f"Service Port: {PORT}")
 print(f"Model: {MODEL}")
-
 
 
 History = List[Tuple[str, str]]
@@ -203,7 +191,7 @@ class GradioEvents:
         
 
 
-with gr.Blocks(css_paths="config/app.css") as demo:
+with gr.Blocks(css_paths="frontend/app_style.css") as demo:
     # gradio state
     history = gr.State([])      # chat history
     setting = gr.State({"system": SYSTEM_PROMPT,})
@@ -405,5 +393,5 @@ with gr.Blocks(css_paths="config/app.css") as demo:
             history_btn.click(GradioEvents.history_render, inputs=[history], outputs=[history_drawer, history_output],)
 
 
-if __name__ == "__main__":
-    demo.launch(ssr_mode=False, share=False, debug=False, server_port=PORT)
+# if __name__ == "__main__":
+#     demo.launch(ssr_mode=False, share=False, debug=False, server_port=PORT)
