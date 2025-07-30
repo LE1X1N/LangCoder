@@ -31,7 +31,6 @@ client = OpenAI(
     api_key=conf["api_key"] 
 )
 MODEL = conf["model"]
-
 PORT = conf["port"]
 
 print(f"Service Port: {PORT}")
@@ -189,7 +188,6 @@ class GradioEvents:
         # regenerate code
         yield from GradioEvents.generation_code(error_prompt, _setting, _history, task_id)
         
-
 
 with gr.Blocks(css_paths="frontend/app_style.css") as demo:
     # gradio state
@@ -393,5 +391,5 @@ with gr.Blocks(css_paths="frontend/app_style.css") as demo:
             history_btn.click(GradioEvents.history_render, inputs=[history], outputs=[history_drawer, history_output],)
 
 
-# if __name__ == "__main__":
-#     demo.launch(ssr_mode=False, share=False, debug=False, server_port=PORT)
+if __name__ == "__main__":
+    demo.launch(ssr_mode=False, share=False, debug=False, server_port=PORT)
