@@ -62,3 +62,5 @@ def setup_logger(service_name):
     service_handler.setFormatter(BASE_FORMATTER)
     logger.addHandler(service_handler)
     return logger
+
+        
