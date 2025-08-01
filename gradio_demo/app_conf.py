@@ -101,7 +101,7 @@ REACT_IMPORTS = {
 
 
 
-with open("tmpls/网页模板-管理系统（左右）.jsx", 'r', encoding='utf-8') as f:
+with open("tmpls/网页模板-管理系统（上下）.jsx", 'r', encoding='utf-8') as f:
     WEB_TEMPLATE = f.read()
 
 
