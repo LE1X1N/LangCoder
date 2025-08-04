@@ -7,22 +7,17 @@ import modelscope_studio.components.pro as pro
 from config import REACT_IMPORTS
 from src.util import get_generated_files
 
-# browser_registry = {}
-# browser_lock = threading.Lock()
-
 
 def launch_sandbox_demo(code_snippet, task_id, port, elem_id, browser_registry, browser_lock):
     """
         Sandbox based on modelscope_studio sandboxs
     """
-    # with browser_lock:
-    #     browser_registry[task_id] = False
-    
+
     generated_files = get_generated_files(code_snippet)
     react_code = generated_files.get("index.tsx") or generated_files.get("index.jsx")
     html_code = generated_files.get("index.html")
     
-    # 回调函数
+    # compile / render 
     def handle_compile_error(e: gr.EventData, task_id: int):
         """ Compile Error """
         error_prompt = f"【编译错误】：{e._data['payload'][0]}"
@@ -37,13 +32,13 @@ def launch_sandbox_demo(code_snippet, task_id, port, elem_id, browser_registry, 
         """ Compile Success """
         print(f"Task_{task_id}:【编译成功】: 代码编译成功，无语法错误，开始渲染...")
         with browser_lock:
-            browser_registry.put(task_id)
+            browser_registry.put(task_id)   # compile success flag
     
     with gr.Blocks() as demo:
         with ms.Application():
             with antd.ConfigProvider():
                 task_id_state = gr.State(value=task_id)
-                
+
                 # init sandbox
                 sandbox = pro.WebSandbox(
                     height=1080,
@@ -70,6 +65,7 @@ def launch_sandbox_demo(code_snippet, task_id, port, elem_id, browser_registry, 
         debug=False,
         prevent_thread_lock=False,
         server_port=port,
-        server_name="0.0.0.0"
+        server_name="0.0.0.0",
+        quiet=True,
     )
     return demo

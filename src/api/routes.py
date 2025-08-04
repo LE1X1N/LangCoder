@@ -14,7 +14,6 @@ api_bp = Blueprint('v1', __name__)
 
 @api_bp.route('/gen_images', methods=['POST'])
 def gen_images():
-    
     # 1. get the parameters
     data = request.get_json()
     
@@ -33,7 +32,6 @@ def gen_images():
         }
         modules.append(module_json)
     
-    # build prompts for each module
     module_prompts = [build_prompt(module) for module in modules]
     
     # 3. Call LLM to generate code
@@ -46,32 +44,24 @@ def gen_images():
     gen_code = call_chat_completion(prompt=module_prompts[0][0])
     print(f"Code generation finished! {time.time() - start_time} s")
     
-    
-    # with Manager() as manager:
-        
     # 4. Init task id and browser port
     task_id = random.randint(1000, 9999)    
     port = get_random_available_port()      # a random port to bind with gradio
     elem_id = "sandbox-iframe"              # sandbox ID in HTML
             
-    # browser_registry = manager.dict()   # shared dict: {task_id: True/False}
-    # browser_lock = manager.Lock()
-    browser_registry = Queue()
+    browser_registry = Queue()  #  communication between main process and browser process
     browser_lock = Lock()
         
     print(f"Task ID: {task_id}")
     print(f"Gradio Port: {port}")
         
-    # 6. Start the browser in a new process    
-    # browser = threading.Thread(target=launch_sandbox_demo, args=(gen_code, task_id, port, elem_id))
-    # browser.start()
-
+    #5. Start the browser in a new process    
     browser = Process(target=launch_sandbox_demo, 
                     args=(gen_code, task_id, port, elem_id, browser_registry, browser_lock))
     browser.start()
     
-    if not wait_for_port(port, timeout=15):
-        browser.kill()
+    if not wait_for_port(port, timeout=15): 
+        browser.kill()  # wait the port is ready
         return jsonify({"status": "error", "message": f"Error: Gradio launch failed at port {port}!"})
     
     try:
@@ -79,7 +69,6 @@ def gen_images():
         driver = init_driver()
         driver.get(f'http://localhost:{port}')
         # driver.get("http://www.baidu.com")
-        print(driver)
         
         render_success = False
         # wait rendering
@@ -97,7 +86,6 @@ def gen_images():
         
         if render_success is False:
             raise TimeoutError("Browser rendering timeout!")
-        # capture_screenshot(task_id, driver)
     
     except Exception as e:
         return jsonify({"status": "error", "message" : f"Error: {e}"})
@@ -107,8 +95,8 @@ def gen_images():
         browser.kill()
         print("Gradio浏览器 退出!")
         
-        driver.close() # 关闭窗口
-        driver.quit()   # 终止driver
+        driver.close() 
+        driver.quit()   
         print("Chrome Driver 退出!")
     return jsonify({"status": "success", "message" : f"Task ID: {task_id}"})
 

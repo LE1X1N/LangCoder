@@ -1,6 +1,5 @@
 # 代码界面渲染
 
-
 ## 1. Demo测试
 
 基于gradio的可视化界面渲染流程Demo。
@@ -25,10 +24,18 @@ docker rm selenium-chrome
 ```
 
 ### 2.2 提供API服务
+使用uwsgi / Flask 提供接口服务
+``` bash
+# 启动
+uwsgi --ini config/uwsgi_service.ini
+
+# 停止
+uwsgi --stop log/uwsgi.pid
+```
 
 
 ### 2.3 测试JSON访问服务
 
 ``` bash
-curl -X POST http://localhost:8687/v1/gen_images -H "Content-Type: application/json"  -d @data.json
+curl -X POST http://localhost:50086/v1/gen_images -H "Content-Type: application/json"  -d @data.json
 ```
