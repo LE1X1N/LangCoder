@@ -36,7 +36,7 @@ def setup_logger(service_name):
     """Initialize the logger for the application."""
     
     # dir
-    WORK_ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))    # file system
+    WORK_ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))    # file system
     LOG_DIR = os.path.join(WORK_ROOT_DIR, "log")
     if not os.path.exists(LOG_DIR):
         os.makedirs(LOG_DIR)

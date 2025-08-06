@@ -1,7 +1,11 @@
 from config import conf, client, SYSTEM_PROMPT
 import time
+from typing import Dict, List, Optional, Tuple
 
-def build_prompt(module):
+History = List[Tuple[str, str]]
+Messages = List[Dict[str, str]]
+
+def build_prompt(module, template:str=None):
     """
         Build prompt based on JSON
     """
@@ -9,6 +13,7 @@ def build_prompt(module):
     page_detail = module["page_detail"]
     page_name = module["page_name"]
     pages = module["page"]
+    
     
     prompts = []
     for page in pages:
@@ -18,8 +23,17 @@ def build_prompt(module):
             当前渲染模块：【{page_name}】
             当前渲染页面：【{page["name"]}】
             渲染需求：{page["text"]} (仅展示UI，无需交互)
+            参考模板：{template}
         """)
     return prompts
+
+
+def history_to_messages(history: History, system: str) -> Messages:
+    messages = [{"role": 'system', "content": system}]
+    for h in history:
+        messages.append({"role": 'user', "content": h[0]})
+        messages.append({"role": 'assistant', "content": h[1]})
+    return messages
 
 
 def call_chat_completion(prompt):

@@ -1,3 +1,7 @@
+# service config
+service_name : self_coder_service
+port: 8687
+
 # openai config
 base_url: http://localhost:8000/v1
 api_key: sk-XXXXXX
@@ -6,6 +10,3 @@ model: Qwen2.5
 # base_url: http://oneapi.aimc.offline/v1
 # api_key: sk-XXXX
 # model: gpt-4.1-mini
-
-# service config
-port: 8687

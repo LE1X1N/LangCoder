@@ -1,9 +1,12 @@
 from flask import Flask
-from src.api.routes import api_bp
+
 from config import conf
-import multiprocessing
+from src.api.routes import api_bp
+from src.util import setup_logger
 
 def create_app():
     app = Flask(__name__)
     app.register_blueprint(api_bp, url_prefix='/v1')
+    
+    setup_logger(conf["service_name"])
     return app

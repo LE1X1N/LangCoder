@@ -1,12 +1,14 @@
 import threading
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
+import os
+import logging
+from config import conf
 
 from config import SCREENSHOT_DIR
 
-# driver manager
-driver_registry = {}
-driver_lock = threading.Lock()
+
+logger = logging.getLogger(conf["service_name"])
 
 def init_driver():
     """
@@ -23,16 +25,23 @@ def init_driver():
         options=chrome_options
     )
 
-def capture_screenshot(task_id, driver):
+def capture_screenshot(request_id, task_id, driver):
     """
         Capture screenshots
     """
     try:
+        # dir 
+        save_dir = SCREENSHOT_DIR / request_id
+        os.makedirs(save_dir, exist_ok=True)
+        
+        # window size 
         total_height = driver.execute_script("return document.body.scrollHeight")
         driver.set_window_size(1920, total_height)
+        
         # save screenshot
-        screenshot_path = str(SCREENSHOT_DIR / f"task_{task_id}.png")
+        screenshot_path = save_dir / f"task_{task_id}.png"
         driver.save_screenshot(screenshot_path)
-        print(f"Task_{task_id}: 截图已保存至 {screenshot_path}")
+        logger.info(f"Request ID: {request_id} -> Task ID: {task_id} 截图已保存至 {screenshot_path}")
+        
     except Exception as e:
-        print(f"Task_{task_id}: 截屏失败 - {str(e)}")
+        logger.info(f"Request ID: {request_id} -> Task ID: {task_id} 截屏失败 - {str(e)}")
