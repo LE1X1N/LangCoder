@@ -6,8 +6,9 @@ from concurrent.futures import ThreadPoolExecutor
 import logging
 import uuid
 
-from config import conf
-from src.llm import build_prompt, call_chat_completion
+from config import conf, SYSTEM_PROMPT
+from src.llm import build_prompt, call_chat_completion , history_to_messages
+from src.llm import History, Messages
 from src.browser.manager import init_driver, capture_screenshot
 from src.browser.renderer import launch_sandbox_demo
 from src.util import get_random_available_port, wait_for_port
@@ -31,35 +32,43 @@ with open('tmpls/网页模板-管理系统（左右）.jsx', 'r', encoding='utf-
     
 tmpls = [tmpl0, tmpl1, tmpl2]
 
-def parseJSON(data):
-    # 1. JSON parsing
-    title = data["title"]               # paper title
-    page_detail = data["page_detail"]   # web description
-    web_pages = data["web_pages"]       # modules 
+def parseJSON(data, request_id=None):
+    # 1. parse input JSON to pages
+    pages = []
+    for mid, module in enumerate(data["web_pages"]):
+        for pid, page in enumerate(module['page']):
+            pages.append(
+                {
+                    "request_id" : request_id,
+                    "page_id" : f'{mid}_{pid}',
+                    "web_title": data["title"], 
+                    "web_detail": data["page_detail"] ,
+                    "module_name": module["page_name"],
+                    "page_name": page["name"],
+                    "page_desc": page["text"],
+                    "page_tmpl": tmpls[int(module["style"])],
+                }
+            )
+    return pages
     
-    # 2. Building prompt
-    modules = []
-    for page in web_pages:
-        # split into different JSON
-        module_json = {
-            "title" : title, 
-            "page_detail" : page_detail,
-            **page
-        }
-        modules.append(module_json)
-        
-    module_prompts = [build_prompt(module, tmpls[mid]) for mid, module in enumerate(modules)]
-    return module_prompts
 
 
-def render_code_thread(task):
-    request_id = task[0]
-    task_id = task[1]
-    prompt = task[2]
+def task_thread(task):
+    start_time = time.time()    
+    history = []    # chat history
+    request_id = task["request_id"]
+    task_id = task["page_id"]
     
-    # 1. Code generation
-    start_time = time.time()
-    code = call_chat_completion(prompt)
+    # 1. assemble prompt
+    query = build_prompt(task)
+    
+    # 2. create messages
+    messages = history_to_messages(history, system=SYSTEM_PROMPT)
+    messages.append({"role": "user", "content": query})
+    
+    # 3. code generation
+    code = call_chat_completion(messages)
+    
     logger.info(f"Request ID: {request_id} -> Task_{task_id}: 代码生成成功！耗时：{time.time() - start_time} s")
     
     port = get_random_available_port()      # a random port to bind with gradio
@@ -118,23 +127,21 @@ def render_code_thread(task):
 @api_bp.route('/gen_images', methods=['POST'])
 def gen_images():
     """
-        输入JSON -> 数据解析 -> Prompt构建 -> 代码生成 -> 截屏渲染 -> 输出图片
+        MainThread(输入JSON -> 数据解析) -> Thread(Prompt构建 -> 代码生成 -> 截屏渲染 -> 输出图片) -> MainThread(结果保存)
     """
     start_time = time.time()
     request_id = str(uuid.uuid4())
     logger.info(f"Request ID: {request_id} ->: 开始处理请求")
     
-    # 1. Parse JSON to prompts
+    # 1. Parse JSON into multiple tasks
     data = request.get_json()   
-    module_prompts = parseJSON(data)
+    tasks = parseJSON(data, request_id)
     
-    render_tasks = []
-    for module_id, module in enumerate(module_prompts):
-        render_tasks.extend([(request_id, f'{module_id}_{page_id}', prompt) for page_id, prompt in enumerate(module)])
+    
     
     # 2. Multi-thread rendering
     executor = ThreadPoolExecutor(max_workers=max_workers)
-    futures = executor.map(render_code_thread, render_tasks)
+    futures = executor.map(task_thread, tasks)
     results = []
     for cur_result in futures:
         results.append(cur_result)

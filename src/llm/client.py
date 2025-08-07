@@ -2,30 +2,25 @@ from config import conf, client, SYSTEM_PROMPT
 import time
 from typing import Dict, List, Optional, Tuple
 
+
 History = List[Tuple[str, str]]
 Messages = List[Dict[str, str]]
 
-def build_prompt(module, template:str=None):
+
+def build_prompt(page):
     """
         Build prompt based on JSON
     """
-    title = module["title"]
-    page_detail = module["page_detail"]
-    page_name = module["page_name"]
-    pages = module["page"]
-    
-    
-    prompts = []
-    for page in pages:
-        prompts.append(f"""
-            任务：基于React设计【{title}】的前端界面。
-            项目背景：{page_detail}
-            当前渲染模块：【{page_name}】
-            当前渲染页面：【{page["name"]}】
-            渲染需求：{page["text"]} (仅展示UI，无需交互)
-            参考模板：{template}
-        """)
-    return prompts
+    prompt = f"""
+            任务：基于React设计【{page["web_title"]}】的前端界面。
+            项目背景：{page["web_detail"]}
+            当前渲染模块：【{page["module_name"]}】
+            当前渲染页面：【{page["page_name"]}】
+            渲染需求：{page["page_desc"]} (仅展示UI，无需交互)
+            参考模板：<begin> {page["page_tmpl"]} <end>
+        """
+    return prompt
+
 
 
 def history_to_messages(history: History, system: str) -> Messages:
@@ -36,7 +31,7 @@ def history_to_messages(history: History, system: str) -> Messages:
     return messages
 
 
-def call_chat_completion(prompt):
+def call_chat_completion(messages):
     """
         Call LLM to generate code
     """
@@ -44,10 +39,7 @@ def call_chat_completion(prompt):
         # openai compatible
         response = client.chat.completions.create(
                 model=conf["model"],  
-                messages=[
-                        {"role": "system", "content": f"{SYSTEM_PROMPT}"},
-                        {"role": "user", "content": prompt}
-                    ],
+                messages=messages,
                 stream=False
             )
         res = response.choices[0].message.content
