@@ -31,6 +31,15 @@ def history_to_messages(history: History, system: str) -> Messages:
     return messages
 
 
+
+def messages_to_history(messages: Messages) -> Tuple[str, History]:
+    assert messages[0]["role"] == "system"
+    history = []
+    for q, r in zip(messages[1::2], messages[2::2]):
+        history.append([q["content"], r["content"]])
+    return history
+
+
 def call_chat_completion(messages):
     """
         Call LLM to generate code

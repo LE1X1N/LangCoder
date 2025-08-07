@@ -13,36 +13,37 @@ def launch_sandbox_demo(request_id, task_id, code, port, browser_registry, brows
     """
         Sandbox based on modelscope_studio sandboxs
     """
-
+    
     generated_files = get_generated_files(code)
     react_code = generated_files.get("index.tsx") or generated_files.get("index.jsx")
     html_code = generated_files.get("index.html")
-    
+        
     # compile / render 
     def handle_compile_error(e: gr.EventData):
         """ Compile Error """
         error_prompt = f"【编译错误】：{e._data['payload'][0]}"
         logger.error(f"Request ID: {request_id} -> Task_{task_id} {error_prompt}")
-        # TODO, regenerate code
+        with browser_lock:
+            browser_registry.put(error_prompt)  # error flag
+
 
     def handle_render_error(e: gr.EventData):
         """ Render error """
         error_prompt = f"【渲染错误】：{e._data['payload'][0]}"
         logger.error(f"Request ID: {request_id} -> Task_{task_id} :{error_prompt}")
-        # TODO, regenerate code
+        with browser_lock:
+            browser_registry.put(error_prompt)  # error flag
+
 
     def handle_compile_success():
         """ Compile Success """
         logger.info(f"Request ID: {request_id} -> Task_{task_id}:【编译成功】: 代码编译成功，无语法错误，开始渲染...")
         with browser_lock:
             browser_registry.put(task_id)   # compile success flag
-    
+        
     with gr.Blocks() as demo:
         with ms.Application():
             with antd.ConfigProvider():
-                # task_id_state = gr.State(value=task_id)
-                history = gr.State([])      # chat history
-                
                 # init sandbox
                 sandbox = pro.WebSandbox(
                     height=1080,
@@ -50,9 +51,9 @@ def launch_sandbox_demo(request_id, task_id, code, port, browser_registry, brows
                     imports=REACT_IMPORTS,
                     value={
                         "./index.tsx": """import Demo from './demo.tsx'
-                                        import "@tailwindcss/browser"
-                                        export default Demo
-                                        """,
+                                            import "@tailwindcss/browser"
+                                            export default Demo
+                                            """,
                         "./demo.tsx": react_code
                     } if react_code else {"./index.html": html_code},
                 )
@@ -60,8 +61,7 @@ def launch_sandbox_demo(request_id, task_id, code, port, browser_registry, brows
                 sandbox.compile_error(handle_compile_error)
                 sandbox.render_error(handle_render_error)
                 sandbox.compile_success(handle_compile_success)
-    
-    logger.info(f"Request ID: {request_id} -> Task_{task_id}: Gradio start rendering!")
+        
     demo.launch(
         ssr_mode=False,
         share=False,
@@ -71,4 +71,5 @@ def launch_sandbox_demo(request_id, task_id, code, port, browser_registry, brows
         server_name="0.0.0.0",
         quiet=True,
     )
+    
     return demo
