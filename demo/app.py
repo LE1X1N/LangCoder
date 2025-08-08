@@ -13,7 +13,7 @@ import modelscope_studio.components.antd as antd
 import modelscope_studio.components.pro as pro
 
 from app_conf import SYSTEM_PROMPT, REACT_IMPORTS, SERVICE_NAME, ALL_DEMOS
-from util import *
+from utils import *
 import yaml
 
 # logger

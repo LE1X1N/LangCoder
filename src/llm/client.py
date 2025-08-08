@@ -1,11 +1,4 @@
-from config import conf, client, SYSTEM_PROMPT
-import time
-from typing import Dict, List, Optional, Tuple
-
-
-History = List[Tuple[str, str]]
-Messages = List[Dict[str, str]]
-
+from config import conf, client
 
 def build_prompt(page):
     """
@@ -20,24 +13,6 @@ def build_prompt(page):
             参考模板：<begin> {page["page_tmpl"]} <end>
         """
     return prompt
-
-
-
-def history_to_messages(history: History, system: str) -> Messages:
-    messages = [{"role": 'system', "content": system}]
-    for h in history:
-        messages.append({"role": 'user', "content": h[0]})
-        messages.append({"role": 'assistant', "content": h[1]})
-    return messages
-
-
-
-def messages_to_history(messages: Messages) -> Tuple[str, History]:
-    assert messages[0]["role"] == "system"
-    history = []
-    for q, r in zip(messages[1::2], messages[2::2]):
-        history.append([q["content"], r["content"]])
-    return history
 
 
 def call_chat_completion(messages):

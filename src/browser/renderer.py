@@ -5,7 +5,7 @@ import modelscope_studio.components.base as ms
 import modelscope_studio.components.pro as pro
 
 from config import REACT_IMPORTS, conf
-from src.util import get_generated_files
+from src.utils import get_generated_files
 
 logger = logging.getLogger(conf["service_name"])
 

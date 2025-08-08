@@ -51,3 +51,38 @@ curl -X POST http://localhost:50086/v1/gen_images -H "Content-Type: application/
 
 curl -X POST http://localhost:8687/v1/gen_images -H "Content-Type: application/json"  -d @test/data.json
 ```
+
+
+```
+Coder-Artifacts
+├─ README.md
+├─ config
+│  ├─ __init__.py
+│  ├─ system_conf.yaml
+│  └─ uwsgi_service.ini
+├─ demo
+│  ├─ app.py
+│  ├─ app_conf.py
+│  └─ app_style.css
+├─ requirements.txt
+├─ src
+│  ├─ api
+│  │  └─ routes.py
+│  ├─ app.py
+│  ├─ browser
+│  │  ├─ __init__.py
+│  │  ├─ manager.py
+│  │  └─ renderer.py
+│  ├─ llm
+│  │  ├─ __init__.py
+│  │  └─ client.py
+│  └─ util
+│     ├─ __init__.py
+│     └─ utils.py
+├─ tmpls
+│  ├─ 小程序模板.jsx
+│  ├─ 网页模板-管理系统（上下）.jsx
+│  └─ 网页模板-管理系统（左右）.jsx
+└─ wsgi.py
+
+```
