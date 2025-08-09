@@ -6,12 +6,12 @@ import time
 
 from config import conf, SYSTEM_PROMPT
 from src.core.parser import DataParser
-from src.llm import build_prompt, call_chat_completion 
+from src.llm import *
 from src.browser.manager import init_driver, capture_screenshot
 from src.browser.renderer import launch_sandbox_demo
 from src.utils import get_random_available_port, wait_for_port, get_logger
 from src.tmpl import TemplateManager
-
+from src.utils import get_generated_files
 
 logger = get_logger()
 
@@ -29,22 +29,26 @@ class TaskManager:
         """
             Multi-thread processing tasks
             
-            MainThread(输入JSON -> 数据解析) -> Thread(Prompt构建 -> 代码生成 -> 截屏渲染 -> 输出图片) -> MainThread(结果保存)
+            MainThread(输入JSON -> 数据解析) 
+            
+            -> Thread(Prompt构建 -> 代码生成 -> 截屏渲染 -> 输出图片) -> MainThread(结果保存)
         """
-        tasks = self.parser.parse(data, request_id)
+        # tasks = self.parser.parse_page(data, request_id)
+        tasks = self.parser.parse_module(data, request_id)
+        
         futures = [self.executor.submit(self._process_single_task, task) for task in tasks]
         return [future.result() for future in futures]
         
         
     def _process_single_task(self, task: dict) -> dict:
 
+        # 1.  parse data
         request_id = task["request_id"]
-        task_id = task["page_id"]
+        task_id = task["task_id"]
+        return_code = task["return_code"]
+        query = task["query"]    
         logger.info(f"Request ID: {request_id} -> Task_{task_id}: ********* 任务 {task_id} 开始！*********")
-        
-        # 1. assemble prompt
-        query = build_prompt(task)
-                    
+             
         # 2. create messages
         messages = [{"role": 'system', "content": SYSTEM_PROMPT}]
         messages.append({"role": "user", "content": query})
@@ -56,20 +60,25 @@ class TaskManager:
         
             # 3. code generation
             start_time = time.time()
-            code = call_chat_completion(messages)
-            messages.append({"role": "assistant", "content": code})
+            res = call_chat_completion(messages)
+            messages.append({"role": "assistant", "content": res})
             logger.info(f"Request ID: {request_id} -> Task_{task_id}: 代码生成成功！耗时：{time.time() - start_time} s")
             
-            port = get_random_available_port()       # a random port to bind with gradio
-            logger.info(f"Request ID: {request_id} ->, Task ID: {task_id}, Gradio Port: {port}")
-            
-            browser_registry = Queue()               #  communication between main process and browser process
-            browser_lock = Lock()
-            
+            # 4. Code check
+            generated_files = get_generated_files(res)
+            react_code = generated_files.get("index.tsx") or generated_files.get("index.jsx")
+        
             try:
-                # 4. Launch brower to render react  
+            
+                # 4. Launch brower to render react 
+                port = get_random_available_port()       # a random port to bind with gradio
+                logger.info(f"Request ID: {request_id} ->, Task ID: {task_id}, Gradio Port: {port}")
+                
+                browser_registry = Queue()               #  communication between main process and browser process
+                browser_lock = Lock()
+            
                 browser = Process(target=launch_sandbox_demo, 
-                                args=(request_id, task_id, code, port, browser_registry, browser_lock))
+                                args=(request_id, task_id, res, port, browser_registry, browser_lock))
                 browser.start()
                 
                 # wait port connected (15s)
@@ -142,7 +151,11 @@ class TaskManager:
             # exit judge
             if render_success:
                 logger.info(f"Request ID: {request_id} -> Task_{task_id}: 第 {turn+1} 轮成功！")
-                return {"task_id": task_id, "status": render_success}
+                
+                if return_code:
+                    return {"task_id": task_id, "status": render_success, "code": react_code}
+                else:
+                    return {"task_id": task_id, "status": render_success}
             else:
                 logger.info(f"Request ID: {request_id} -> Task_{task_id}: 第 {turn+1} 轮失败！")
         

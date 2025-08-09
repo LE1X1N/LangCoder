@@ -2,7 +2,7 @@
 service_name : self_coder_service
 port: 8687
 
-max_workers: 5     # multithread
+max_workers: 1     # multithread
 max_retries: 3     # Number of retry attempts after failure
 
 connect_timeout: 15      # Wait the port to be listend
